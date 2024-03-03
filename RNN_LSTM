@@ -1,0 +1,180 @@
+#RNN
+import numpy as np
+import pandas as pd
+import tensorflow as tf
+from tensorflow import keras
+from keras.layers import LSTM,Embedding,GRU,Flatten
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.metrics import accuracy_score
+from keras.models import Sequential
+from keras.layers import SimpleRNN, Dense, Activation, Dropout
+from keras.callbacks import EarlyStopping, ModelCheckpoint
+
+# Load your dataset
+df = pd.read_csv('/content/drive/MyDrive/DS-MQTT/biflow_features/biflow_sparta.csv')
+
+# Preprocessing
+data = df.drop(['ip_src', 'ip_dst', 'proto'], axis=1).copy()
+data.isnull().sum()
+data = data.sample(frac=1).reset_index(drop=True)
+y = data['is_attack']
+X = data.drop('is_attack', axis=1)
+
+# Normalize the data using MinMaxScaler
+scaler = MinMaxScaler()
+X = scaler.fit_transform(X)
+
+# Define the number of time steps for your sequences
+num_time_steps = 10  # You can adjust this value
+
+# Reshape the data into sequences
+X_seq = []
+y_seq = []
+for i in range(len(X) - num_time_steps + 1):
+    X_seq.append(X[i:i+num_time_steps])
+    y_seq.append(y[i+num_time_steps-1])
+
+X_seq = np.array(X_seq)
+y_seq = np.array(y_seq)
+
+# Split the data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X_seq, y_seq, test_size=0.2, random_state=42)
+
+# Build the RNN model
+model_rnn = Sequential()
+model_rnn.add(SimpleRNN(8, input_shape=(num_time_steps, X_seq.shape[2]), return_sequences=True))
+model_rnn.add(Dropout(0.1))
+model_rnn.add(SimpleRNN(8, return_sequences=False))
+model_rnn.add(Dropout(0.1))
+model_rnn.add(Dense(1, activation='sigmoid'))
+
+model_rnn.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+
+# Define callbacks
+es = EarlyStopping(monitor='val_accuracy', mode='max', min_delta=0.0001, patience=5)
+checkpoint = ModelCheckpoint("best_model_rnn.hdf5", monitor='val_accuracy', save_best_only=True, mode='max')
+
+# Train the model
+batch_size = 32
+model_rnn.fit(X_train, y_train, batch_size=batch_size, epochs=1000, validation_data=(X_test, y_test), callbacks=[es, checkpoint])
+
+# Load the best model
+model_rnn.load_weights("best_model_rnn.hdf5")
+
+# Make predictions on the test set
+y_pred = model_rnn.predict(X_test)
+y_pred_binary = (y_pred > 0.5).astype(int)
+
+# Calculate accuracy
+accuracy = accuracy_score(y_test, y_pred_binary)
+print("Test Accuracy: {:.2f}%".format(accuracy * 100))
+
+#lstm
+import numpy as np
+import pandas as pd
+import tensorflow as tf
+from tensorflow import keras
+from keras.layers import LSTM,Embedding,GRU,Flatten
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.metrics import accuracy_score
+from keras.models import Sequential
+from keras.layers import SimpleRNN, Dense, Activation, Dropout
+from keras.callbacks import EarlyStopping, ModelCheckpoint
+
+# Load your dataset
+df = pd.read_csv('/content/drive/MyDrive/DS-MQTT/biflow_features/biflow_sparta.csv')
+
+# Preprocessing
+data = df.drop(['ip_src', 'ip_dst', 'proto'], axis=1).copy()
+data.isnull().sum()
+data = data.sample(frac=1).reset_index(drop=True)
+y = data['is_attack']
+X = data.drop('is_attack', axis=1)
+
+# Normalize the data using MinMaxScaler
+scaler = MinMaxScaler()
+X = scaler.fit_transform(X)
+
+# Define the number of time steps for your sequences
+num_time_steps = 10  # You can adjust this value
+
+# Reshape the data into sequences
+X_seq = []
+y_seq = []
+for i in range(len(X) - num_time_steps + 1):
+    X_seq.append(X[i:i+num_time_steps])
+    y_seq.append(y[i+num_time_steps-1])
+
+X_seq = np.array(X_seq)
+y_seq = np.array(y_seq)
+
+# Split the data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X_seq, y_seq, test_size=0.2, random_state=42)
+
+#Build the LSTM model
+model_lstm = Sequential()
+#model_dnn3.add(Flatten())
+model_lstm.add(LSTM(8,input_shape=(num_time_steps, X_seq.shape[2]), return_sequences=True))
+model_lstm.add(Dropout(0.1))
+model_lstm.add(LSTM(8, return_sequences=False))
+model_lstm.add(Dropout(0.1))
+model_lstm.add(Dense(1))
+model_lstm.add(Activation('sigmoid'))
+
+model_lstm.compile(loss='binary_crossentropy',optimizer='adam',metrics=['accuracy'])
+# Define callbacks
+es = EarlyStopping(monitor='val_accuracy', mode='max', min_delta=0.0001,patience=5) ## early stoppoing
+checkpoint= ModelCheckpoint("best_model_lstm.hdf5", monitor='val_accuracy', save_best_only=True, mode='max')
+
+# Train the model
+batch_size = 32
+model_lstm.fit(X_train, y_train, batch_size=batch_size, epochs=1000, validation_data=(X_test, y_test), callbacks=[es, checkpoint])
+# Load the best model
+model_lstm.load_weights("best_model_lstm.hdf5")
+
+# Make predictions on the test set
+y_pred = model_lstm.predict(X_test)
+y_pred_binary = (y_pred > 0.5).astype(int)
+
+# Calculate accuracy
+accuracy = accuracy_score(y_test, y_pred_binary)
+print("Test Accuracy: {:.2f}%".format(accuracy * 100))
+
+//confusion matrix
+from sklearn.metrics import precision_score, recall_score, f1_score, confusion_matrix
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Make predictions on the test set
+y_pred = model_lstm.predict(X_test)
+y_pred_binary = (y_pred > 0.5).astype(int)
+
+# Calculate precision, recall, and F1 score
+accuracy= accuracy_score(y_test, y_pred_binary)
+precision = precision_score(y_test, y_pred_binary, average='weighted', labels=np.unique(y_pred_binary))
+recall = recall_score(y_test, y_pred_binary, average='weighted', labels=np.unique(y_pred_binary))
+f1 = f1_score(y_test, y_pred_binary, average='weighted', labels=np.unique(y_pred_binary))
+confusion = confusion_matrix(y_test, y_pred_binary)
+
+with open("bisparta.txt", "w") as file:
+    file.write(f"Test Accuracy: {accuracy * 100:.2f}%\n")
+    file.write(f"F1 Score: {f1:.4f}\n")
+    file.write(f"Precision: {precision:.4f}\n")
+    file.write(f"Recall: {recall:.4f}\n")
+    file.write("Confusion Matrix:\n")
+    file.write(np.array2string(confusion, separator=', '))
+
+# Create a confusion matrix
+cm = confusion_matrix(y_test, y_pred_binary)
+
+# Plot the confusion matrix
+plt.figure(figsize=(8, 6))
+#sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=['0', '1'], yticklabels=['0', '1'])
+sns.heatmap(confusion, annot=True, fmt="d", cmap="Blues")
+plt.xlabel('Predicted')
+plt.ylabel('Actual')
+plt.title('Confusion Matrix')
+plt.show()
+plt.savefig("confusion_matrix.png")
